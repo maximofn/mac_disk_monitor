@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.maximofn.mac-disk-monitor-tray</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/macm1/Documents/proyectos/system-monitor/mac_disk_monitor/front-mac/build/Mac Disk Monitor.app/Contents/MacOS/mac-disk-monitor-tray</string>
+        <string>--backend-url</string>
+        <string>http://127.0.0.1:9136</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>StandardOutPath</key>
+    <string>/Users/macm1/Library/Logs/mac-disk-monitor-tray.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/macm1/Library/Logs/mac-disk-monitor-tray.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,39 @@
+[package]
+name = "mac-disk-monitord"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "macOS disk monitor daemon — HTTP/SSE backend serving per-mount usage and top-N largest files."
+
+[[bin]]
+name = "mac-disk-monitord"
+path = "src/main.rs"
+
+[dependencies]
+mac-disk-monitor-core = { path = "../mac-disk-monitor-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+clap = { version = "4", features = ["derive", "env"] }
+hostname = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+walkdir = "2"
+
+# Cross-platform mount enumeration: per-disk total/available/kind/file_system.
+# `system` is needed for hostname/kernel; `disk` exposes Disks::new_with_refreshed_list.
+sysinfo = { version = "0.39", default-features = false, features = ["disk", "system", "multithread"] }
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,9 @@
+/target
+**/*.rs.bk
+.DS_Store
+
+# Swift Package Manager
+front-mac/.build/
+front-mac/.swiftpm/
+front-mac/build/
+front-mac/Package.resolved
