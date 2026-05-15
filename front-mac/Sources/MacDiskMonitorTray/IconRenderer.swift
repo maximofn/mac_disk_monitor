@@ -83,8 +83,8 @@ struct IconRenderer {
     }
 
     @MainActor
-    func renderImage(mounts: [Mount], connected: Bool, appearance: IconAppearance) -> NSImage? {
-        guard let result = renderCGImage(mounts: mounts, connected: connected, appearance: appearance) else {
+    func renderImage(mounts: [Mount], connected: Bool, appearance: IconAppearance, compact: Bool = false) -> NSImage? {
+        guard let result = renderCGImage(mounts: mounts, connected: connected, appearance: appearance, compact: compact) else {
             return nil
         }
         let img = NSImage(cgImage: result.cgImage, size: result.logicalSize)
@@ -97,9 +97,10 @@ struct IconRenderer {
         mounts: [Mount],
         connected: Bool,
         to path: String,
-        appearance: IconAppearance = .dark
+        appearance: IconAppearance = .dark,
+        compact: Bool = false
     ) throws {
-        guard let result = renderCGImage(mounts: mounts, connected: connected, appearance: appearance) else {
+        guard let result = renderCGImage(mounts: mounts, connected: connected, appearance: appearance, compact: compact) else {
             throw NSError(domain: "IconRenderer", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "render failed"])
         }
@@ -122,9 +123,9 @@ struct IconRenderer {
         let logicalSize: CGSize
     }
 
-    private func renderCGImage(mounts: [Mount], connected: Bool, appearance: IconAppearance) -> RenderResult? {
+    private func renderCGImage(mounts: [Mount], connected: Bool, appearance: IconAppearance, compact: Bool) -> RenderResult? {
         let scale: CGFloat = 2
-        let layout = self.layout(mounts: mounts, scale: scale, connected: connected, appearance: appearance)
+        let layout = self.layout(mounts: mounts, scale: scale, connected: connected, appearance: appearance, compact: compact)
         let pxW = max(1, Int(layout.totalLogicalWidth * scale))
         let pxH = max(1, Int(height * scale))
 
@@ -168,16 +169,19 @@ struct IconRenderer {
         let blocks: [Block]
         let connected: Bool
         let appearance: IconAppearance
+        let compact: Bool
     }
 
-    private func layout(mounts: [Mount], scale: CGFloat, connected: Bool, appearance: IconAppearance) -> Layout {
+    private func layout(mounts: [Mount], scale: CGFloat, connected: Bool, appearance: IconAppearance, compact: Bool) -> Layout {
         let textPx = textSize(forHeight: height)
         let donutSize = max(8, height - donutPadding * 2)
         let iconW: CGFloat = baseIcon.map { CGFloat($0.width) / scale } ?? 0
 
         let blocks: [Block] = mounts.map { m in
             let label = shortLabel(for: m.mountPoint)
-            let w = measureText(label, size: textPx)
+            // In compact mode the label is not drawn — zero its measured width
+            // so layout / draw stay in sync without two code paths.
+            let w = compact ? 0 : measureText(label, size: textPx)
             return Block(mount: m, label: label, textWidth: w)
         }
 
@@ -188,6 +192,10 @@ struct IconRenderer {
             // could be misread as "0% used".
             let dashW = measureText("-", size: textPx)
             total = iconW + 4 + dashW + 2
+        } else if compact {
+            let blocksW = CGFloat(blocks.count) * (iconW + 2 + donutSize)
+            let gaps = perMountGap * CGFloat(max(0, blocks.count - 1))
+            total = blocksW + gaps
         } else {
             let blocksW = blocks.reduce(CGFloat(0)) { acc, b in
                 acc + iconW + 2 + b.textWidth + 2 + donutSize
@@ -202,7 +210,8 @@ struct IconRenderer {
             textPx: textPx,
             blocks: blocks,
             connected: connected,
-            appearance: appearance
+            appearance: appearance,
+            compact: compact
         )
     }
 
@@ -239,7 +248,11 @@ struct IconRenderer {
         for (i, block) in layout.blocks.enumerated() {
             if i > 0 { x += perMountGap }
             drawMountBlock(ctx: ctx, originX: x, block: block, layout: layout)
-            x += layout.iconWidth + 2 + block.textWidth + 2 + layout.donutSize
+            if layout.compact {
+                x += layout.iconWidth + 2 + layout.donutSize
+            } else {
+                x += layout.iconWidth + 2 + block.textWidth + 2 + layout.donutSize
+            }
         }
     }
 
@@ -257,20 +270,24 @@ struct IconRenderer {
             ctx.restoreGState()
         }
 
-        let labelColor = layout.connected
-            ? IconColors.text(layout.appearance)
-            : IconColors.dimText(layout.appearance)
-        let textX = x + layout.iconWidth + 2
-        drawText(
-            block.label,
-            ctx: ctx,
-            x: textX,
-            size: layout.textPx,
-            color: labelColor,
-            blockHeight: height
-        )
+        if !layout.compact {
+            let labelColor = layout.connected
+                ? IconColors.text(layout.appearance)
+                : IconColors.dimText(layout.appearance)
+            let textX = x + layout.iconWidth + 2
+            drawText(
+                block.label,
+                ctx: ctx,
+                x: textX,
+                size: layout.textPx,
+                color: labelColor,
+                blockHeight: height
+            )
+        }
 
-        let donutX = x + layout.iconWidth + 2 + block.textWidth + 2
+        let donutX = layout.compact
+            ? x + layout.iconWidth + 2
+            : x + layout.iconWidth + 2 + block.textWidth + 2
         let usedPct = block.mount.usage.usedPercent
         drawDonut(
             ctx: ctx,
